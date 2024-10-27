@@ -86,6 +86,14 @@ async def select_content_from_slide(pool, id_slide):
                 content += row[0]
             return content
 
+async def select_content_from_result_slide(pool, id_slide):
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(f"SELECT content FROM presentation.result_slide WHERE id_slide = {id_slide}")
+            content = ""
+            async for row in cur:
+                content += row[0]
+            return content
 # Фильтр для анализа контента
 import re
 from config import bad_words
@@ -102,12 +110,15 @@ async def main():
 
 async def take_content_from_presentation(pool,presentation_id):
     slides_id = await select_slides_from_presentation_slide(pool, presentation_id)
+    print(slides_id)
     if len(slides_id)>=4: #если слайдов больше 4
         slides_content = []
         # добавляем контент со всех слайдов презентации
         for j in range(len(slides_id)):
-            con = await select_content_from_slide(pool, slides_id[j])
-            slides_content.append(con)
+            con_clide = await select_content_from_slide(pool, slides_id[j])
+            res_con=await select_content_from_result_slide(pool,slides_id[j])
+            slides_content.append(con_clide)
+            slides_content.append(res_con)
 
         # получаем id вопросов и контент вопроса
         question_content, question_id = await select_id_question_and_content_from_question_question(pool, slides_id)
@@ -120,6 +131,8 @@ async def take_content_from_presentation(pool,presentation_id):
 
         # получаем контент с survey.option
         survey_option_content=await select_content_from_survey_option(pool,survey_id)
+
+
         return slides_content+question_content+question_option_content+survey_content+survey_option_content
     else:
         return 0
@@ -173,7 +186,6 @@ async def filter_bad_words(texts: List[str]) -> List[str]:
     bad_words_patterns = [build_regex(word) for word in bad_words if word.strip()]
     tasks = [check_bad_words(text, bad_words_patterns) for text in texts]
     results = await asyncio.gather(*tasks)
-
     # Возвращаем список строк, содержащих маты
     return [text for text, has_bad_word in zip(texts, results) if has_bad_word]
 async def about_presentation(pool,presentation_ids):
@@ -190,7 +202,6 @@ async def about_presentation(pool,presentation_ids):
                     await update_teg_copy_presentation_false(pool, presentation_id)
                 else:
                     await update_teg_copy_presentation_true(pool,presentation_id)
-
 
                 # print(f"Контент со слайдов:{slides_content}")
                 # print(f"Контент с question.question:{question_content}",i)
