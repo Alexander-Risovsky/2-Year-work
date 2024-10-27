@@ -1,36 +1,22 @@
 import asyncio
 import aiopg
 from config import host, port, user, db_name, password
-from config import schema_name
 from typing import List
 from config import bad_words
 
 dsn = f"dbname={db_name} user={user} password={password} host={host} port={port}"
 
-async def select_schema(pool, schema_name):
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(
-                "SELECT schema_name FROM information_schema.schemata WHERE schema_name = ANY(%s)",
-                (schema_name,)
-            )
-            ret = []
-            async for row in cur:
-                ret.append(row[0])
-            return ret
-
-async def select_presentation(pool, schemas):
+#Берем презентации у которых дата создание октябрь 2024 года, потом поменяю на день
+async def select_presentation(pool):
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             presentation_id = []
-            for schema in schemas:
-                if schema == "presentation":
-                    await cur.execute(
-                        f"SELECT id FROM {schema}.presentation "
+            await cur.execute(
+                        f"SELECT id FROM presentation.presentation "
                         f"WHERE EXTRACT(MONTH FROM date_creation) = 10 "
                         f"AND EXTRACT(YEAR FROM date_creation) = 2024;"
                     )
-                    async for row in cur:
+            async for row in cur:
                         presentation_id.append(row[0])
             return presentation_id
 #Берем id слайдов, которые в ходят в презентацию у которой id=presentation_id
@@ -54,7 +40,6 @@ async def select_id_question_and_content_from_question_question(pool, slides_id)
                 id_question.append(row[0])
                 content.append(row[1])
             return content,id_question,
-
 
 ##Берем id опросов и контент на них
 async def select_id_survey_and_content_from_survey_survey(pool, slides_id):
@@ -111,28 +96,13 @@ from lxml import html
 
 async def main():
     async with aiopg.create_pool(dsn) as pool:
-        schemas = await select_schema(pool, schema_name)
-        presentation_ids = await select_presentation(pool, schemas)
+        presentation_ids = await select_presentation(pool)
 
         await about_presentation(pool,presentation_ids)
-        # slide_ids = await select_slides_from_presentation_slide(pool, presentation_ids[1])
-        # contents,question_id = await select_id_question_and_content_from_question_question(pool, slide_ids)
-        # print(question_id,contents)
-        # question_option_content = await select_content_from_question_option(pool,question_id)
-        # print(question_option_content)
-        # content_slides=[]
-        # for i in range(len(slide_ids)):
-        #     con=await select_content_from_slide(pool, slide_ids[i])
-        #     content_slides.append(edit_text(con))
-        # print(content_slides)
-        # print(schemas)
-        # print(presentation_ids)
-        # print(slide_ids)
 
 async def take_content_from_presentation(pool,presentation_id):
     slides_id = await select_slides_from_presentation_slide(pool, presentation_id)
-    print(slides_id)
-    if len(slides_id)>=4:
+    if len(slides_id)>=4: #если слайдов больше 4
         slides_content = []
         # добавляем контент со всех слайдов презентации
         for j in range(len(slides_id)):
@@ -156,6 +126,7 @@ async def take_content_from_presentation(pool,presentation_id):
 
 #Обработка одной презентации
 
+#Убираем html
 async def edit_text(text_escaped):
     if len(text_escaped)!=0:
         unescaped_text = html1.unescape(text_escaped)
@@ -168,8 +139,6 @@ async def edit_content(content):
         return await asyncio.gather(*(edit_text(item) for item in content))
     return content
 
-
-# Функция для нормализации строки
 # Функция для нормализации строки
 def normalize_text(text: str) -> str:
     replacements = {
@@ -180,7 +149,6 @@ def normalize_text(text: str) -> str:
         text = text.replace(k, v)
     return text
 
-
 # Функция для построения универсальных регулярных выражений
 def build_regex(bad_word: str) -> re.Pattern:
     # Преобразуем слово в паттерн с возможными заменами символов
@@ -188,7 +156,6 @@ def build_regex(bad_word: str) -> re.Pattern:
         .replace('о', '[оo0]').replace('з', '[з3]').replace('с', '[с$]')
 
     return re.compile(pattern, re.IGNORECASE)
-
 
 # Функция проверки строки на содержание матов
 async def check_bad_words(text: str, bad_words_patterns: List[re.Pattern]) -> bool:
@@ -200,7 +167,7 @@ async def check_bad_words(text: str, bad_words_patterns: List[re.Pattern]) -> bo
     return False
 
 
-# Асинхронная функция для проверки массива строк
+#Функция для проверки массива строк
 async def filter_bad_words(texts: List[str]) -> List[str]:
     # Компилируем регулярные выражения для всех плохих слов
     bad_words_patterns = [build_regex(word) for word in bad_words if word.strip()]
@@ -222,7 +189,7 @@ async def about_presentation(pool,presentation_ids):
                 if offensive_content:
                     await update_teg_copy_presentation_false(pool, presentation_id)
                 else:
-                    update_teg_copy_presentation_true
+                    await update_teg_copy_presentation_true(pool,presentation_id)
 
 
                 # print(f"Контент со слайдов:{slides_content}")
@@ -230,7 +197,7 @@ async def about_presentation(pool,presentation_ids):
                 # print(f"Контент с question_option_content:{question_option_content}")
                 # print(f"Контент с survey.survey:{survey_content}")
                 # print(f"Контент с survey.option:{survey_option_content}")
-                print(f"Матерный контент:{offensive_content}")
+                #print(f"Матерный контент:{offensive_content}")
             else:
                 await update_teg_copy_presentation_false(pool,presentation_id)
 
