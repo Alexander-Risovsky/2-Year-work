@@ -4,7 +4,7 @@ password="123"
 db_name="cURCAS"
 port="4321"
 
-
+dsn = f"dbname={db_name} user={user} password={password} host={host} port={port}"
 #Названия схем
 schema_name=['survey','question','presentation']
 
