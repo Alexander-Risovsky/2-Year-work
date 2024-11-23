@@ -1,6 +1,6 @@
 import asyncio
 import aiopg
-from config import dsn
+from config import dsn,limit
 from ImportFromDB import DBLoader
 from BadWordFilter import FilterBadWords
 
@@ -24,7 +24,7 @@ async def about_presentation(pool, presentation_ids):
 async def main():
     async with aiopg.create_pool(dsn) as pool:
         db_loader = DBLoader(pool)
-        presentation_ids = await db_loader.select_presentation()
+        presentation_ids = await db_loader.select_presentation(limit)
         print(presentation_ids)
         await about_presentation(pool, presentation_ids)
 

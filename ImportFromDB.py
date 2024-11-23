@@ -1,6 +1,6 @@
 import asyncio
 import aiopg
-from config import dsn
+from config import dsn,limit
 from typing import List
 
 class DBLoader:
@@ -8,17 +8,21 @@ class DBLoader:
         self.pool = pool
 
     # Получаем презентации старше 1 дня
-    async def select_presentation(self):
+    async def select_presentation(self,limit):
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 presentation_id = []
-                await cur.execute("""
+
+                await cur.execute(f"""
                     SELECT id FROM presentation.presentation  WHERE date_creation < (CURRENT_DATE - INTERVAL '1 day') 
                     
-                    and visible is true""")
-                    #and copy is null
+                    and visible is true
+                    and copy is null
+                    LIMIT {limit}
+                     """)
                     #and template is false
                     #and diaclass_pick is false
+
                     #пока закомментил так как в тестовых данных у всех през dia_pic is null
 
                 async for row in cur:
@@ -73,7 +77,7 @@ class DBLoader:
     async def take_content_from_presentation(self, presentation_id):
         slides_id = await self.select_slides_from_presentation_slide(presentation_id)
         if len(slides_id) < 4:
-            return
+            return False
 
         content = []
         for slide_id in slides_id:
