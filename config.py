@@ -1,16 +1,20 @@
-host="127.0.0.1"
-user="postgres"
-password="123"
-db_name="cURCAS"
-port="4321"
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+host=os.environ.get("PG_DB_HOST")
+user=os.environ.get("PG_DB_USER")
+password=os.environ.get("PG_DB_PASSWORD")
+db_name=os.environ.get("PG_DB_NAME")
+port=os.environ.get("PG_DB_PORT")
 
 dsn = f"dbname={db_name} user={user} password={password} host={host} port={port}"
 #Названия схем
-schema_name=['survey','question','presentation']
+schema_name=[os.environ.get("SCHEMA_NAME")]
 
 #Список запрещенных слов
-russ_mat=open("Маты на русском", encoding="utf-8").readlines()
-eng_mat=open("Маты на английском",encoding="utf-8").readlines()
-extr=open("Экстремизм",encoding="utf-8").readlines()
+russ_mat=open("RU_BAD_WORDS", encoding="utf-8").readlines()
+eng_mat=open("EN_BAD_WORDS", encoding="utf-8").readlines()
+extr=open("extremism", encoding="utf-8").readlines()
 bad_words=[i.strip() for i in russ_mat+eng_mat+extr]
 

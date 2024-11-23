@@ -4,6 +4,7 @@ from config import dsn
 from ImportFromDB import DBLoader
 from BadWordFilter import FilterBadWords
 
+
 async def about_presentation(pool, presentation_ids):
     db_loader = DBLoader(pool)
     content_processor = FilterBadWords()
@@ -24,6 +25,7 @@ async def main():
     async with aiopg.create_pool(dsn) as pool:
         db_loader = DBLoader(pool)
         presentation_ids = await db_loader.select_presentation()
+        print(presentation_ids)
         await about_presentation(pool, presentation_ids)
 
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

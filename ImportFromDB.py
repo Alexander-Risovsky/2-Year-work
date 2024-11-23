@@ -13,9 +13,14 @@ class DBLoader:
             async with conn.cursor() as cur:
                 presentation_id = []
                 await cur.execute("""
-                    SELECT id FROM presentation.presentation 
-                    WHERE date_creation < (CURRENT_DATE - INTERVAL '1 day')
-                """)
+                    SELECT id FROM presentation.presentation  WHERE date_creation < (CURRENT_DATE - INTERVAL '1 day') 
+                    
+                    and visible is true""")
+                    #and copy is null
+                    #and template is false
+                    #and diaclass_pick is false
+                    #пока закомментил так как в тестовых данных у всех през dia_pic is null
+
                 async for row in cur:
                     presentation_id.append(row[0])
                 return presentation_id
@@ -68,7 +73,7 @@ class DBLoader:
     async def take_content_from_presentation(self, presentation_id):
         slides_id = await self.select_slides_from_presentation_slide(presentation_id)
         if len(slides_id) < 4:
-            return 0
+            return
 
         content = []
         for slide_id in slides_id:
