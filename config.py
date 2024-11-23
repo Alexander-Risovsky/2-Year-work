@@ -18,3 +18,5 @@ eng_mat=open("EN_BAD_WORDS", encoding="utf-8").readlines()
 extr=open("extremism", encoding="utf-8").readlines()
 bad_words=[i.strip() for i in russ_mat+eng_mat+extr]
 
+
+
