@@ -73,6 +73,18 @@ class DBLoader:
                         content += row[0]
                 return content
 
+
+    #Берем название презентации
+    async def select_name_presentation(self, presentation_id, table_name):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(f"SELECT name FROM presentation.{table_name} WHERE presentation.id = %s", (presentation_id,))
+                content = ""
+                async for row in cur:
+                    if row[0] is not None:
+                        content += row[0]
+                return content
+
     # Сбор контента презентации
     async def take_content_from_presentation(self, presentation_id):
         slides_id = await self.select_slides_from_presentation_slide(presentation_id)
@@ -80,6 +92,9 @@ class DBLoader:
             return False
 
         content = []
+        name_presentation=await self.select_name_presentation(presentation_id,"presentation")
+
+        content.append(name_presentation)
         for slide_id in slides_id:
             content_slide = await self.select_content_from_slide(slide_id, "content_slide")
             result_slide = await self.select_content_from_slide(slide_id, "result_slide")
