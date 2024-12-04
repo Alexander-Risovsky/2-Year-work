@@ -3,6 +3,8 @@ import aiopg
 from config import dsn,limit
 from ImportFromDB import DBLoader
 from BadWordFilter import FilterBadWords
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
 async def about_presentation(pool, presentation_ids):
@@ -11,15 +13,15 @@ async def about_presentation(pool, presentation_ids):
 
     for presentation_id in presentation_ids:
         content = await db_loader.take_content_from_presentation(presentation_id)
-        if content:
+        if content: #Если есть какой-то контент то проверяем
             content = await content_processor.edit_content(content)
             offensive_content = await content_processor.filter_bad_words(content)
-            if offensive_content:
+            if offensive_content: #Если есть нецензерный контент, то ставим False
                 await db_loader.update_presentation_tag(presentation_id, False)
-            else:
+            else:   #Иначе ставим True
                 await db_loader.update_presentation_tag(presentation_id, True)
-        else:
-            await db_loader.update_presentation_tag(presentation_id, False)
+        # else: #Если нет контента, то ставим False
+        #     await db_loader.update_presentation_tag(presentation_id, False)
 
 async def main():
     async with aiopg.create_pool(dsn) as pool:

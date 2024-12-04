@@ -17,13 +17,13 @@ class DBLoader:
                     SELECT id FROM presentation.presentation  WHERE date_creation < (CURRENT_DATE - INTERVAL '1 day') 
                     
                     and visible is true
-                    and copy is null
+                    and copy is null 
+                    and (template is false or template is null)
+                    and (diaclass_pick is false or diaclass_pick is null)
+                    ORDER BY RANDOM()
                     LIMIT {limit}
+                    
                      """)
-                    #and template is false
-                    #and diaclass_pick is false
-
-                    #пока закомментил так как в тестовых данных у всех през dia_pic is null
 
                 async for row in cur:
                     presentation_id.append(row[0])

@@ -13,9 +13,9 @@ dsn = f"dbname={db_name} user={user} password={password} host={host} port={port}
 schema_name=[os.environ.get("SCHEMA_NAME")]
 
 #Список запрещенных слов
-russ_mat=open("RU_BAD_WORDS", encoding="utf-8").readlines()
-eng_mat=open("EN_BAD_WORDS", encoding="utf-8").readlines()
-extr=open("extremism", encoding="utf-8").readlines()
+russ_mat=open("RU_BAD_WORDS.txt", encoding="utf-8").readlines()
+eng_mat=open("EN_BAD_WORDS.txt", encoding="utf-8").readlines()
+extr=open("extremism.txt", encoding="utf-8").readlines()
 bad_words=[i.strip() for i in russ_mat+eng_mat+extr]
 
 #Лимит для выкачки БД
