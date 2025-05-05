@@ -3,9 +3,18 @@ import html as html1
 from lxml import html
 from typing import List
 import asyncio
-from config import bad_words
+from Ofline.config import bad_words,white_list
+
 
 class FilterBadWords:
+    def __init__(self):
+        # Создаем паттерны для всех плохих слов
+        self.bad_words_patterns = set([
+            FilterBadWords.generate_regex_for_any_word(word)
+            for word in bad_words if word.strip()
+        ])
+
+
     @staticmethod
     async def edit_content(content):
         async def edit_text(text_escaped):
@@ -25,43 +34,95 @@ class FilterBadWords:
         if text is None:
             return ""
         replacements = {
-            '@': 'а', '*': '*', '1': 'и', 'i': 'и', '!': 'и',
-            '3': 'з', '$': 'с', '0': 'о', 'z': 'з', '&': 'з',
-            '4': 'ч', '6': 'б', '9': 'я', 'p': 'р', 'd': 'д'
+            '@': 'а',
+            '1': 'и',
+            '!': 'и',
+            '3': 'з',
+            '$': 'с',
+            '0': 'о',
+            '&': 'з',
+            '4': 'ч',
+            '6': 'б',
+            '9': 'я',
+            "a": "а",
+            "b": "б",
+            "v": "в",
+            "g": "г",
+            "d": "д",
+            "e": "е",
+            "yo": "ё",
+            "zh": "ж",
+            "z": "з",
+            "i": "и",
+            "j": "й",
+            "k": "к",
+            "l": "л",
+            "m": "м",
+            "n": "н",
+            "o": "о",
+            "p": "п",
+            "r": "р",
+            "s": "с",
+            "t": "т",
+            "u": "у",
+            "f": "ф",
+            "h": "х",
+            "ts": "ц",
+            "ch": "ч",
+            "sh": "ш",
+            "shch": "щ",
+            "y": "у",  # упрощенно
+            "yu": "ю",
+            "ya": "я",
+            "": "ь",  # мягкий знак
+            "'": "ъ",  # твердый знак
+            "je": "э",
+            "e'": "э",
         }
-        text = text.lower()
-        for k, v in replacements.items():
-            text = text.replace(k, v)
-        # Убираем любые символы, кроме букв, цифр, пробелов и специальных символов
-        text = re.sub(r'[^а-яa-z0-9\s*@!$]', '', text)
+        text = text.lower().strip()
+        for char in list(text):
+            replacement = replacements.get(char, char)
+            text = text.replace(char, replacement)
+        # Оставляем только буквы и пробелы
+        text = re.sub(r'[^а-яa-z\s]', '', text)
         return text
 
     @staticmethod
-    def build_regex(bad_word: str) -> re.Pattern:
-        pattern = bad_word \
-            .replace('а', '[аa@]') \
-            .replace('и', '[иi1!]') \
-            .replace('о', '[оo0]') \
-            .replace('з', '[з3z&]') \
-            .replace('с', '[с$s]') \
-            .replace('е', '[еeё]') \
-            .replace('д', '[дd]') \
-            .replace('п', '[пp]') \
-            .replace('я', '[я9]') \
-            .replace('ч', '[ч4]') \
-            .replace('б', '[б6]')
-        # Добавляем поддержку произвольных символов между буквами, включая спецсимволы
-        pattern = re.sub(r'(?<!\\)', r'.*?', pattern)
-        return re.compile(pattern, re.IGNORECASE)
+    def generate_regex_for_any_word(word: str) -> re.Pattern:
+        """
+        Генерирует регулярное выражение для слова с учетом возможных повторений букв.
+        Границы слова делаем опциональными, чтобы ловить склейки.
+        """
+        # Экранируем слово, затем для каждого символа разрешаем повторение
+        escaped = re.escape(word)
+        regex = r"\b"  # опциональная граница в начале
+        for char in escaped:
+            regex += f"{char}+"
+        regex += r"\b"  # опциональный мягкий знак и граница в конце
+        return re.compile(regex, re.IGNORECASE | re.VERBOSE)
 
     @staticmethod
-    async def check_bad_words(text: str, bad_words_patterns: List[re.Pattern]) -> bool:
+    async def check_bad_words(text: str, bad_words_patterns: set) -> bool:
         normalized_text = FilterBadWords.normalize_text(text)
-        return any(pattern.search(normalized_text) for pattern in bad_words_patterns)
+        if normalized_text in white_list:
+            return False
+        elif normalized_text in bad_words:
+            return True
+        for pattern in bad_words_patterns:
+            if pattern.search(normalized_text):
+                print(f"⚠️ Совпадение (regex): '{normalized_text}' под {pattern.pattern}")
+                return True
+        return False
 
-    @staticmethod
-    async def filter_bad_words(texts: List[str]) -> List[str]:
+    async def filter_bad_words(self, texts: List[str]) -> bool:
         texts = [text for text in texts if text is not None]
-        bad_words_patterns = [FilterBadWords.build_regex(word) for word in bad_words if word.strip()]
-        results = await asyncio.gather(*[FilterBadWords.check_bad_words(text, bad_words_patterns) for text in texts])
-        return [text for text, has_bad_word in zip(texts, results) if has_bad_word]
+        words = set()
+        # Добавляем как целые строки, так и разбиваем предложения на отдельные слова
+        for sentence in texts:
+            words.add(sentence)
+            for word in sentence.split():
+                words.add(word)
+        results = await asyncio.gather(*[
+            self.check_bad_words(word, self.bad_words_patterns) for word in words
+        ])
+        return any(results)

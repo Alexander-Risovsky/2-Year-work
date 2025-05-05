@@ -14,15 +14,20 @@ class DBLoader:
                 presentation_id = []
 
                 await cur.execute(f"""
-                    SELECT id FROM presentation.presentation  WHERE date_creation < (CURRENT_DATE - INTERVAL '1 day') 
-                    
-                    and visible is true
-                    and copy is null 
-                    and (template is false or template is null)
-                    and (diaclass_pick is false or diaclass_pick is null)
+                    SELECT id 
+                    FROM presentation.presentation  
+                    WHERE date_creation < (CURRENT_DATE - INTERVAL '1 day') 
+                      AND visible IS TRUE
+                      AND copy IS NULL 
+                      AND (template IS FALSE OR template IS NULL)
+                      AND (diaclass_pick IS FALSE OR diaclass_pick IS NULL)
+                      AND name NOT IN (
+                          SELECT name 
+                          FROM presentation.presentation 
+                          WHERE presentation.copy = true
+                      )
                     ORDER BY RANDOM()
                     LIMIT {limit}
-                    
                      """)
 
                 async for row in cur:
